@@ -1,0 +1,46 @@
+---
+title: "2019.1.28 - Class 1 Data Viz"
+author: "Michael Weisner"
+date: "1/28/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Getting Started with GGPlot2
+
+### Data Growth
+
+If we take all the data between the beginning of time and 2008, we'll soon create that amount every minute.
+
+So it's important we capture it!
+
+## Methods of Capturing Data Trends:
+
+### Modeling
+Modeling is one way to understand relationships in data.
+
+### Graphing / Visualization
+This let's us quickly understand data in a more easily digestible way
+Can also be good for digesting live-streaming data!
+
+## Visualization
+"Action or fact of visualization; the power or process of forming a mental picture or vision of something not present to the sight."
+
+## Types of Visualization
+
+1. To Understand/Discover Patterns (find things that rows don't reveal)
+2. To Analyze (like seeing train slowdowns)
+3. To Present (to make our point)
+
+
+
+
+
+
+
+
+
+
