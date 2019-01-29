@@ -43,7 +43,7 @@ Can also be good for digesting live-streaming data!
 4. Networks
 5. Dynamic and Interactive Visuals
 
-## ggplot2
+### ggplot2
 
 + Week 1
 + + Intro
@@ -59,26 +59,184 @@ Can also be good for digesting live-streaming data!
 + + Making ggplot interactive
 + + Using plot.ly
 
-## Spatial Data
+### Spatial Data
 
 Maps are powerful!
 
-## Text as Data
+### Text as Data
 
 Text into data takes some steps... so we should go through those!
 
-## Networks
+### Networks
 
 e.g. social networks.
 
-## Interactivity
+### Interactivity
 
 Shiny! And "Data Driven Documents" (or D3) for javascript on the web.
 
+## Data Visualization as a Skill
+Data Visualization is typically a weak skill for data driven professionals (let's change it)
+
+## RMarkdown
+Use it for notes and homework!
+
+It's clear and reproducible.
+
+## Assignments
+
+1. Final Report (30%) - a final group project in the form of a website and class presentation
+2. Assignments (60%) - 4 individual assignments
+3. Class Participation (off and online) & commentary on other student project (10%)
+
+Final Project idea: Realtime MTA slowdowns with mapping of tweets with sentiment analysis?
+
+## What makes for GOOD Data Visualization
+
+Remember, there are two types of data visualization
+
+1. Exploring (for data and researchers)
+2. Explaining (for readers)
 
 
+### Chart Examples
 
++ Bar Graphs tell us some relative differences
++ Pie Charts don't tell us the total, just relative comparisons.
 
+### Bad Visualization:
+
+1. Misleading
+2. Wrong Form
+3. Too Much or Too Little Information
+4. Poor Design
+
+#### Circles
+
+Circles stink for comparisons. We can't easily compare areas between circles.
+
+### Good Visualization:
+
+1. Truthful (reliable and honest information)
+2. Functional (organized that enables exploration)
+3. Beautiful (at least attractive/intriguing/pleasing)
+4. Insightful (reveals evidence that we have a hard time seeing otherwise)
+
+### Other Tips
+
++ 3d and circular displays are rarely smart
++ For now let's practice making graphs!
+
+## Starting with ggplot2!
+
+### Packages
+```{r}
+library(ggplot2)
+library(gapminder)
+gapminder
+```
+
+Don't forget the `str()` command to look at structure of data.
+```{r}
+str(gapminder)
+```
+
+### Scatterplot
+```{r}
+gg_scatter <- ggplot(gapminder, aes(x = gdpPercap, y = lifeExp)) # nothing to plot yet
+```
+
+Above is just our plane, there's no data to be plotted yet. The reason is ggplot2 wants to make everything done in the same syntactical way.
+
+Also note that we can assign ggplots to objects! This let's us modularly build plots.
+
+```{r}
+gg_scatter + geom_point()
+```
+
+#### Log Transformation
+
+It looks like a logarythmic relationship so let's transform it
+```{r}
+p <- ggplot(gapminder, aes(x = log10(gdpPercap), y = lifeExp))
+p + geom_point() + scale_x_log10()
+```
+
+### Color
+```{r}
+p + 
+  geom_point(aes(color = continent), alpha = 0.70) +
+  scale_x_log10()
+p
+```
+
+### Fitted Curves
+```{r}
+p + 
+  geom_point(aes(color = continent), alpha = 0.70) +
+  scale_x_log10() + 
+  geom_smooth()
+```
+
+We can change color and take out standard error from the default loess curve.
+```{r}
+p + 
+  geom_point(aes(color = continent), alpha = 0.70) +
+  scale_x_log10() + 
+  geom_smooth(color = "black", lwd=2, se = FALSE)
+```
+
+Here's a linear model
+```{r}
+p + 
+  geom_point(aes(color = continent), alpha = 0.70) +
+  scale_x_log10() + 
+  geom_smooth(method="lm")
+```
+
+### Smooth Fit by Continent
+```{r}
+p + 
+  geom_point(aes(color = continent), alpha = 0.70) +
+  scale_x_log10() + 
+  geom_smooth(lwd = 2, se = FALSE, aes(color = continent))
+```
+
+### Facet Wrapping
+
+```{r}
+p + 
+  geom_point(aes(color = continent), alpha = 0.70) +
+  scale_x_log10() + 
+  geom_smooth(lwd = 2, se = FALSE, aes(color = continent)) + facet_wrap(~ continent)
+```
+
+## Grammar of Graphics
+
+ggplot is based on a "grammar" of graphics, originated with Wilkinson (2005)
+
+### Main Principles:
+
+1. Graphics = distinct layers of grammatical elements
+2. If necessary some additional rules about scales, projections in a coordinate system, and data transformations are possible
+3. Plots arise through aesthetic mapping
+4. The grammar produces "sentences" (mappings of data to objects) but they can be easily garbled if you define poor mappings
+
+### Three Key Elements
+ 
+1. Data (gapminder)
+2. Aesthetics (gdp and life expectancy)
+3. Geometries (points)
+
+Also:
+
+1. Data
+2. Aesthetics
+3. Geometries
+4. Facets (facet by continent)
+5. Statistics (add geom smooth or lm)
+6. Coordinates (map?)
+7. Themes (do some cleanup)
 
 
 
