@@ -35,6 +35,46 @@ Can also be good for digesting live-streaming data!
 2. To Analyze (like seeing train slowdowns)
 3. To Present (to make our point)
 
+## Course Outline
+
+1. Intro and Plotting with ggplot2
+2. Working with Spatial Data. Visualizing Maps
+3. Text Analysis and Visualization
+4. Networks
+5. Dynamic and Interactive Visuals
+
+## ggplot2
+
++ Week 1
++ + Intro
++ + Basics 
++ + Concepts, data, aesthetics, geometries
++ Week 2
++ + Stats, coordinates, facets, themes
++ Best Practices
++ Week 3
++ + Refining Plots, themes, publication-ready
++ + Advanced plots and ggplot2 internals
++ Week 4
++ + Making ggplot interactive
++ + Using plot.ly
+
+## Spatial Data
+
+Maps are powerful!
+
+## Text as Data
+
+Text into data takes some steps... so we should go through those!
+
+## Networks
+
+e.g. social networks.
+
+## Interactivity
+
+Shiny! And "Data Driven Documents" (or D3) for javascript on the web.
+
 
 
 
