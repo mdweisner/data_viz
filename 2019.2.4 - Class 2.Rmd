@@ -1,0 +1,327 @@
+---
+title: "2019.2.4 - Class 2"
+author: "Michael Weisner"
+date: "2/4/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Ggplot2 is even used by BBC!
+
+Visualization of the color of native american mourning --> picture of colors associated with various feelings in different cultures.
+
+Not super great in terms of function and thus insight, but was truthful and relatively beautiful.
+
+## Contrary Views
+
+Monthly spirals by years?
+
+Functional: We want to have legible functional graphs that provide the correct information easily to the interested reader and allow exploration.
+Insightful: We want to reveal evidence that was otherwise hard to see.
+
+SO
+
+We must understand the basic principles of visual perception...
+
+## Georgia Lupi
+Check her out
+https://medium.com/accurat-studio/beautiful-reasons-c1c6926ab7d7
+
+## Perception
+
+* We more easily see edges, contrasts, and movement
+* We judge relative difference rather than absolute
+* We process visual info using preattentive attributes and patterns
+* We use gestalt principles to group individual elements into groups and differentiate patterns
+* The elementary perceptual tasks involved determine the information we can easily estimate from graphs
+
+## Preattentive Visual Properties
+
+There are some formats we have a very easy time reading.
+
+### Properties:
+
+* A preattentive visual property is processed in spatial memory without our conscious action (but we don't need to be attentive)
+* fast: < 500 milliseconds for the eye and brain to process
+* color and contrast between features matters most
+
+### Using Them
+* Not all equally strong... 
+* Do not use multiple preattentive channels for competing information
+* For highlighting, use whatever feature dimension is used least in other parts of the design
+
+### Making Things Stand Out
+
+* Use these insights to design plots to emphasize particular pieces of information
+
+**TAKEAWAYS:**
+
+* Use color and shape sparingly to make the important info pop.
+* Maximize the contrast with the background if the outlines of shapes are important.
+
+### Symbols
+
+Make symbols as distinct from each other as possible (and from their backgrounds). Redundant properties (color and shape) can be helpful.
+
+### Elementary Perceptual Tasks
+
+Some visual estimations are more easily carried out than others (remember pie charts are tough to read)
+
+* Common scales are better than non-aligned scales.
+* Length judgements are easier with a common baseline.
+* Angles are often misjudged. Angles >90° are often overestimated, angles <90° often underestimated.
+* Area judgments are less accurate than length judgments or position judgments.
+* Volumes are misjudged even more. This is one reason 3-D charts are usually terrible.
+* Slopes and changes in slope are prone to misjudgement.
+* Colors are best reserved for displaying categories.
+
+
+## The Plot-Making Process in GGPlot
+
+| Element | Description | 
+|------:|:-----:|
+| **Data** | The dataset being plotted. |
+| **Aes**thetics | The scales onto which we map our data. |
+| **Geom**etries | The visual elements used for our data. | 
+
+```{r}
+library(ggplot2)
+library(gapminder)
+ggplot(gapminder, aes(x = gdpPercap, y = lifeExp)) + 
+        scale_x_log10() +
+        geom_point(alpha=0.5, size=3, color="red")
+```
+
+```{r}
+ggplot(gapminder, aes(x = gdpPercap, y = lifeExp, color=continent)) +
+        geom_point() + scale_x_log10()
+```
+
+### Typical Aesthetics
+
+| Aesthetic | Description | 
+|------:|:-----:|
+| x | X axis position |
+| y | Y axis position |
+| colour | Colour of dots, outlines of other shapes |
+| fill | Fill colour |
+| size | Diameter of points, thickness of lines |
+| alpha | Transparency |
+| linetype | Line dash pattern |
+| labels | Text on a plot or axes |
+| shape | Shape |
+
+### Aesthetics & Geom
+
+- each `geom()` layer allows you to set the aesthetics that make sense for the particular plot `geom()`
+- for example, `geom_point` understands the following aesthetics: x, y, alpha, color, fill, group, shape, size, stroke. For `geom_point()` the aesthetics x and y are required.
+- some aesthetics are limited to continous variables, others to categorical variables
+
+### Aesthetics - Continuous Variables
+
+Makes sense for continuous aesthetics, like color, size, alpha.
+
+## Aesthetics - Categorical Variables - Mapping onto shape
+
+```{r, fig.width=6, fig.height=4}
+ggplot(d, aes(x = gdpPercap, y = lifeExp, shape=continent)) +
+  scale_x_log10() + geom_point(alpha=0.3, size=4)
+```
+
+## Adding redundant channel to emphasize
+
+```{r, fig.width=6, fig.height=4}
+ggplot(d, aes(x = gdpPercap, y = lifeExp, shape=continent)) +
+  scale_x_log10() + geom_point(alpha=0.3, size=4) +
+  geom_point(data=filter(d, continent=="Americas"), 
+   color="red", alpha=0.5, size=4) + theme(legend.position="none")
+```
+
+## Encircle to emphasize 
+```{r, echo=FALSE}
+previousplot <- ggplot(d, aes(x = gdpPercap, y = lifeExp, shape=continent)) +
+  scale_x_log10() + geom_point(alpha=0.3, size=2) +
+  geom_point(data=filter(d, continent=="Americas"), 
+   color="red", alpha=0.5, size=2) + theme(legend.position="none")
+previousplot
+```
+
+
+```{r, fig.width=6, fig.height=4}
+# ggalt() includes the encircle() function
+# devtools::install_github("hrbrmstr/ggalt", force=FALSE)
+library(ggalt)
+previousplot + geom_encircle(data=filter(d, country=="United States"), 
+                expand=0.05, color="blue", linetype=2, size=2)
+```
+
+## Connect to emphasize 
+
+```{r, echo=TRUE, fig.width=12, fig.height=8, eval=FALSE}
+library(ggthemes)
+ggplot(d, aes(x = gdpPercap, y = lifeExp, shape=continent)) +
+  scale_x_log10() + 
+  geom_path(data=filter(d, country=="United States"), 
+            color="light blue", linetype=1, size=6) +
+  geom_path(data=filter(d, country=="Venezuela"), 
+            color="light green", linetype=1, size=6) +
+  geom_path(data=filter(d, country=="Haiti"), 
+            color="orange", linetype=1, size=6) +
+  geom_point(alpha=0.3, size=4) +
+  geom_point(data=filter(d, continent=="Americas"), 
+              color="red", alpha=0.5, size=4) + 
+  theme(legend.position="none") +
+  annotate("text", x = c(40000), y = c(73), family="serif", size=6, 
+           color="dark blue", label = c("United States")) +
+  annotate("text", x = c(13000), y = c(63), family="serif", size=6, 
+           color="dark green", label = c("Venezuela")) +
+  annotate("text", x = c(1200), y = c(62), family="serif", size=6, 
+           color="dark orange", label = c("Haiti")) + theme_tufte()
+```
+
+## Connect to emphasize 
+
+```{r, echo=FALSE, fig.width=12, fig.height=8}
+library(ggthemes)
+ggplot(d, aes(x = gdpPercap, y = lifeExp, shape=continent)) +
+  scale_x_log10() + 
+  geom_path(data=filter(d, country=="United States"), 
+            color="light blue", linetype=1, size=6) +
+  geom_path(data=filter(d, country=="Venezuela"), 
+            color="light green", linetype=1, size=6) +
+  geom_path(data=filter(d, country=="Haiti"), 
+            color="orange", linetype=1, size=6) +
+  geom_point(alpha=0.3, size=4) +
+  geom_point(data=filter(d, continent=="Americas"), 
+   color="red", alpha=0.5, size=4) + theme(legend.position="none") +
+  annotate("text", x = c(40000), y = c(73), family="serif", size=6, color="dark blue",
+           label = c("United States")) +
+  annotate("text", x = c(13000), y = c(63), family="serif", size=6, color="dark green",
+           label = c("Venezuela")) +
+  annotate("text", x = c(1200), y = c(62), family="serif", size=6, color="dark orange",
+           label = c("Haiti")) + theme_tufte()
+```
+
+## Boxplots and Dot Plots
+
+* For some plots we have specific geom() e.g. box plots are created with geom_boxplot
+* For other plots we can use the geoms we already know, e.g. for dot plots we can use geom_point
+* Overall 37 geoms, but good to know a few. Check out the cheatsheet.
+
+Name of Plot  | Geom | Other Features |
+--------------|-------|--------------
+scatterplot   | point |  |
+bubblechart   | point | size mapped to a variable |
+barchart      | bar   | |
+box-and-whisker plot | boxplot |
+line chart    | line | |
+
+
+## A New Dataset - Organ Donors
+
+```{r}
+organs.url <- "https://raw.githubusercontent.com/socviz/soc880/gh-pages/data/organ-procurement.csv"
+organs.data <- read.csv(url(organs.url), row.names=1)
+```
+
+```{r, get-organdata, echo= TRUE}
+organs <- organs.data
+dim(organs)
+head(organs)
+## For convenience, let R know year is a time measure.
+organs$year <- as.Date(strptime(organs$year, format="%Y"))
+```
+
+```{r}
+p <- ggplot(data = organs, aes(x = year, y= donors))
+p + geom_point()
+
+```
+
+```{r}
+p + geom_line(aes(group = country, color = consent.law)) +
+  scale_color_manual(values=c("gray40", "firebrick")) +
+  scale_x_date() + 
+  labs(x = "Year", y = "Donors", color = "Consent Law") +
+  theme(legend.position = "top")
+```
+
+### Faceting
+
+```{r}
+# ggplot has two faceting functions that do slightly different things: `facet_grid()`, seen here, and `facet_wrap()`. Try them out on the Gapminder data.
+
+p + geom_line(aes(group=country)) +
+    labs(x="Year",
+         y="Donors") +
+    facet_grid(~ consent.law)
+```
+
+### A quick bit of data manipulation - Average by group
+```{r}
+library(dplyr)
+by.country <- organs %>% group_by(consent.law, country) %>%
+    summarize(donors=mean(donors, na.rm = TRUE))
+by.country
+```
+
+### Ordered dotplots
+```{r}
+p <- ggplot(by.country, aes(x=donors, y=country, color=consent.law))
+p + geom_point(size=3)
+```
+
+### Ordering
+
+```{r}
+p <- ggplot(by.country, aes(x=donors, y=reorder(country, donors), 
+                            color=consent.law))
+p + geom_point(size=3)
+```
+
+### Improve the labels
+```{r}
+p + geom_point(size=3) +
+    labs(x="Donor Procurement Rate (per million population)",
+         y="", color="Consent Law") +
+    theme(legend.position="top")
+```
+
+
+### Alternate Labels...
+
+```{r}
+p <- ggplot(by.country, aes(x=donors, y=reorder(country, donors)))
+p + geom_point(size=3) +
+    facet_grid(consent.law ~ ., scales="free") +
+    labs(x="Donor Procurement Rate (per million population)",
+         y="",
+         color="Consent Law") +
+    theme(legend.position="top")
+```
+
+### Dotplots
+* dotplots are useful to get a summary of one-dimensional categorical data
+* Often better than bar or column charts.
+* Keeping the categories on the y-axis is often a good idea.
+* They also work well to summarize model results with error ranges.
+
+### Boxplots
+
+```{r}
+p <- ggplot(data = organs, aes(x = country, y = donors))
+p + geom_boxplot() +
+  coord_flip() +
+  labs(x="", y="Donor Procurement Rate")
+```
+
+
+
+
+
+
+
+
