@@ -319,9 +319,88 @@ p + geom_boxplot() +
 ```
 
 
+### Ordered boxplot
+
+```{r}
+p <- ggplot(data=organs,aes(x=reorder(country, donors, na.rm=TRUE), y=donors)) 
+p + geom_boxplot() + coord_flip() +
+    labs(x="", y="Donor Procurement Rate")
+```
+
+### Colored boxplot
+
+```{r}
+p <- ggplot(data=organs,aes(x=reorder(country, donors, na.rm=TRUE),y=donors)) 
+p + geom_boxplot(aes(fill=consent.law)) +
+    coord_flip() + labs(x="", y="Donor Procurement Rate")
+```
+
+### Boxplots & Jitter
+Add some jitter!
+
+```{r}
+# Can combine jitter and boxplot if needed
+ggplot(data=organs,aes(x=reorder(country, donors, na.rm=TRUE),y=donors)) + 
+  geom_boxplot(aes(fill=consent.law), outlier.colour="transparent", alpha=0.3) +
+  coord_flip() + labs(x="", y="Donor Procurement Rate") +
+  geom_jitter(shape=21, aes(fill=consent.law), color="black",
+              position=position_jitter(w=0.1))
+```
 
 
+### 1-D Plots
+```{r}
+p <- ggplot(data=organs, aes(x=reorder(country, donors, na.rm=TRUE), y=donors)) 
+p + geom_point(aes(color=consent.law)) +
+    coord_flip() + labs(x="", y="Donor Procurement Rate")
+```
 
 
+### Add a little jitter
+```{r}
+p <- ggplot(data=organs,aes(x=reorder(country, donors, na.rm=TRUE), y=donors)) 
+p + geom_jitter(aes(color=consent.law)) + coord_flip() + 
+        labs(x="", y="Donor Procurement Rate")
+```
 
+### Fine Tuning Jitter
+
+```{r}
+p <- ggplot(data=organs, aes(x=reorder(country, assault, na.rm=TRUE), y=assault)) 
+p + geom_jitter(aes(color=world),
+                position = position_jitter(width=0.15)) +
+    coord_flip() +
+    labs(x="", y="Assault") +
+    theme(legend.position="top")
+```
+
+### Other Graphs
+```{r}
+p + geom_point() + ggtitle("point")
+# p + geom_text() + ggtitle("text") # lets you label on plot points!
+p + geom_bar(stat = "identity") + ggtitle("bar") 
+p + geom_tile() + ggtitle("raster")
+p + geom_line() + ggtitle("line")
+p + geom_area() + ggtitle("area")
+p + geom_path() + ggtitle("path")
+p + geom_polygon() + ggtitle("polygon")
+```
+
+## Barcharts
+For bar graphs, these position adjustments are important as well:
+
++ position_stack(): stack overlapping bars (or areas) on top of each other.
++ position_fill(): stack overlapping bars, scaling so the top is always at 1.
++ position_dodge(): place overlapping bars (or boxplots) side-by-side.
+
+
+```{r}
+dplot <- ggplot(diamonds, aes(color, fill = cut)) + 
+  xlab(NULL) + ylab(NULL) + theme(legend.position = "none")
+# position stack is the default for bars, so `geom_bar()` 
+# is equivalent to `geom_bar(position = "stack")`.
+dplot + geom_bar()
+dplot + geom_bar(position = "fill")
+dplot + geom_bar(position = "dodge")
+```
 
