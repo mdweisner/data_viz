@@ -1,0 +1,153 @@
+---
+title: "mw2931_guns_exercise"
+author: "Michael Weisner"
+date: "2/10/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(tidyverse)
+```
+
+## Datasource 1: Gunsales - NYTimes
+```{r}
+library(gunsales)
+gun_sales <- analysis()
+str(gun_sales[,1:12])
+```
+
+## Datasource 2: Gun ownership survey data - Washington Post
+```{r}
+library(XML)
+library(dplyr)
+gun_ownership_url = 'http://www.washingtonpost.com/wp-srv/health/interactives/guns/ownership.html'
+gun_ownership = readHTMLTable(gun_ownership_url, header = TRUE, which = 1)
+gun_ownership = gun_ownership[-1, ]
+parse_num = function (x) as.numeric(sub(',', '', x))
+gun_ownership = select(gun_ownership, State = 1, Total = 2, Yes = 3,
+                       `Yes %` = 4, No = 5, `No %` = 6) %>%
+                        mutate_each(funs(parse_num), -State)
+head(gun_ownership)
+```
+
+```{r}
+gun_ownership = gun_ownership %>%
+    mutate(`Child access prevention` = grepl('\\*$', State),
+           State  = sub('\\*$', '', State))
+# Fix D.C. name
+gun_ownership[gun_ownership$State == 'The District', 'State'] = 'District of Columbia' 
+```
+
+## Datasource 3: Deaths due to firearms by state - Kaiser Family Foundation
+
+```{r}
+# Website appears to block scraping, but allows downloading data.
+# gun_deaths_url = 'http://kff.org/other/state-indicator/firearms-death-rate-per-100000/'
+# gun_deaths = readHTMLTable(gun_deaths_url)
+# Instead, we use the manually downloaded CSV output.
+gun_deaths = read.csv("KFF_deaths_firearms.csv", skip = 3) %>%
+    select(State = 1, `Deaths per 100000` = 2)
+head(gun_deaths)
+```
+## Dataset 4: Gun-related deaths at the invidual level (2012-2014)
+
+## Dataset 4: Gun-related deaths at the invidual level (2012-2014)
+```{r, warning=FALSE, comment=FALSE}
+library(readr)
+gun_inddeaths <- read_csv("https://raw.githubusercontent.com/fivethirtyeight/guns-data/master/full_data.csv")
+gun_inddeaths <- gun_inddeaths[,2:dim(gun_inddeaths)[2]]
+head(gun_inddeaths)
+```
+
+
+## Does gun ownership correlate with firearm deaths in the U.S.? Does the pattern hold only in the aggregate or also by state? 
+
+
+### Data
+I first did an innerjoin of valid cases for gun ownership and gun death datasets.
+
+### Deaths per 100K and Percentage Owning Guns
+I identified deaths per 100K people and the percentage of gun owners as state-level and relatively equivalent variables to compare.
+
+### Exploratory Plots
+
+I took a few stabs at this. My ideal was side-by-side bar charts with two y-axes (though this can sometimes be hard to read) to see if it's possible to compare the trends between states' gun ownership and deaths.
+
+```{r}
+gun_own_death <- as.tibble(inner_join(gun_ownership, gun_deaths, by = NULL))
+gun_own_death <- rename(gun_own_death, Deaths_per_100k = `Deaths per 100000`)
+gun_own_death <- rename(gun_own_death, Yes_per = `Yes %`)
+
+ggplot(data = gun_own_death, aes(x = reorder(State, Deaths_per_100k), y = Deaths_per_100k, group = State, alpha = 0.9)) +
+  geom_col(aes(y = Deaths_per_100k, fill = "Deaths_per_100k", width = 0.8), position = position_dodge2(preserve = "total")) +
+  geom_col(aes(y = Yes_per/3, fill = "Yes_per", width=0.5), position = position_dodge2(preserve = "total")) +
+  scale_y_continuous(sec.axis = sec_axis(~.*3, name = "Percentage of People Owning Guns")) +
+  theme(axis.text.x=element_text(angle = -80, hjust = 0)) +
+  xlab("State") +
+  ylab("Gun Deaths per 100,000 People") +
+  ggtitle("Comparing Gun Ownership to Gun Deaths by State")
+```
+
+My original attempt was to create two side-by-side bars for each state showing the level of gun deaths per 100k people and the percentage who owns guns in the state. I realized you can't do a position dodge with two seperate geom_cols. I then attempted to make them tidy as such:
+
+```{r}
+library(reshape2)
+gun.long<-melt(select(gun_own_death, State = State, Yes_per = Yes_per, Deaths_per_100k = Deaths_per_100k))
+ggplot(gun.long,aes(State, value, fill=variable))+
+     geom_col(stat="identity",position="dodge") +
+  theme(axis.text.x=element_text(angle = -80, hjust = 0))
+```
+
+Overall this was closer but it needs to have more separation and it wasn't possible to put them on a similar axis, or have the second axis visible. I experimented more.
+
+```{r}
+ggplot(data = gun_own_death, aes(x = reorder(State, Deaths_per_100k), y = Deaths_per_100k, group = State)) +
+  geom_col(aes(y= Deaths_per_100k, fill = Yes_per), 
+    stat = 'identity',
+    position = 'dodge') +
+  theme(axis.text.x=element_text(angle = -80, hjust = 0))
+```
+
+I thought the fill might be useful but it's not quite as easily legible. It might be better to do some kind of quantile based coloring, but you can see a general trend of darker to lighter in correspondence with shorter to taller.
+
+### Final Plots
+```{r}
+gun_own_death <- as.tibble(inner_join(gun_ownership, gun_deaths, by = NULL))
+gun_own_death <- rename(gun_own_death, `Gun Deaths per 100000` = `Deaths per 100000`)
+gun_own_death <- rename(gun_own_death, `Percent Owning Guns` = `Yes %`)
+```
+
+```{r}
+ggplot(data = gun_own_death, aes(x = reorder(State, `Gun Deaths per 100000`), y = `Gun Deaths per 100000`, group = State)) +
+  geom_col(aes(y = `Gun Deaths per 100000`, fill = "Gun Deaths per 100000"), width = 0.8, position = position_dodge2(preserve = "total")) +
+  geom_col(aes(y = `Percent Owning Guns`/3, fill = "Percent Owning Guns"), width=0.5, alpha = 0.8, position = position_dodge2(preserve = "total")) +
+  scale_y_continuous(sec.axis = sec_axis(~.*3, name = "Percentage of People Owning Guns")) +
+  theme(axis.text.x=element_text(angle = -80, hjust = 0)) +
+  xlab("State") +
+  ylab("Gun Deaths per 100,000 People") +
+  labs(fill = "Variables") +
+  theme(legend.position = "top") +
+  ggtitle("Comparing Gun Ownership to Gun Deaths by State") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+ggplot(data = gun_own_death, aes(x = reorder(State, `Percent Owning Guns`), y = `Gun Deaths per 100000`, group = State)) +
+  geom_col(aes(y = `Percent Owning Guns`/3, fill = "Percent Owning Guns"), width=0.8, position = position_dodge2(preserve = "total")) +
+  scale_y_continuous(sec.axis = sec_axis(~.*3, name = "Percentage of People Owning Guns")) +
+  geom_col(aes(y = `Gun Deaths per 100000`, fill = "Gun Deaths per 100000"), width = 0.5, alpha = 0.8) +
+  theme(axis.text.x=element_text(angle = -80, hjust = 0)) +
+  xlab("State") +
+  ylab("Gun Deaths per 100,000 People") +
+  labs(fill = "Variables") +
+  theme(legend.position = "top") +
+  ggtitle("Comparing Gun Ownership to Gun Deaths by State") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+Back to my original idea, I tried two overlaid and scaled geom_col() functions. I think this was the easiest to see the general trend, but it's a bit cluttered in design.

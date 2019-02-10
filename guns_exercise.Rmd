@@ -42,8 +42,11 @@ Gun Restrictions? Sales Go Up"](https://www.nytimes.com/interactive/2015/12/10/u
 - the NYTimes `gunsales` package also contains some `ggplot' output. Take a look to see what they did and how it corresponds to their published graphs.
 ```{r, eval=FALSE}
 plot_gunsales(gun_sales)    
+```
+```{r}
 ggplot_gunsales(gun_sales)
 ```
+
 
 ## Datasource 2: Gun ownership survey data - Washington Post
 
@@ -73,8 +76,10 @@ gun_ownership = gun_ownership %>%
 # Fix D.C. name
 gun_ownership[gun_ownership$State == 'The District', 'State'] = 'District of Columbia' 
 ```
+
 ## Datasource 3: Deaths due to firearms by state - Kaiser Family Foundation
 Another piece of information about the [number of deaths due to injury by firearms presented by the Kaiser Foundation](http://kff.org/other/state-indicator/firearms-death-rate-per-100000/?currentTimeframe=0) (and assembled from publications by the Centers for Disease Control and Prevention).
+
 ```{r}
 # Website appears to block scraping, but allows downloading data.
 # gun_deaths_url = 'http://kff.org/other/state-indicator/firearms-death-rate-per-100000/'
@@ -85,9 +90,11 @@ gun_deaths = read.csv("KFF_deaths_firearms.csv", skip = 3) %>%
 head(gun_deaths)
 ```
 ## Dataset 4: Gun-related deaths at the invidual level (2012-2014)
+
 - FiveThirtyEight has explored the data on the 33,000 annual gun deaths in America in multiple articles (including this [interactive feature](https://fivethirtyeight.com/features/gun-deaths/)) in their "Gun Death in America" project. 
 - The data comes from the Centers for Disease Control and Prevention’s Multiple Cause of Death database, which is derived from death certificates from all 50 states and the District of Columbia and is widely considered the most comprehensive estimate of firearm deaths.
 - The data is available [on GitHub here](https://github.com/fivethirtyeight/guns-data).
+
 ## Dataset 4: Gun-related deaths at the invidual level (2012-2014)
 ```{r, warning=FALSE, comment=FALSE}
 library(readr)
@@ -95,10 +102,76 @@ gun_inddeaths <- read_csv("https://raw.githubusercontent.com/fivethirtyeight/gun
 gun_inddeaths <- gun_inddeaths[,2:dim(gun_inddeaths)[2]]
 head(gun_inddeaths)
 ```
+
 ## Possible Questions to explore with these data (feel free to explore what you think is interesting)
+
 - Does gun ownership correlate with firearm deaths in the U.S.? Does the pattern hold only in the aggregate or also by state? 
+
+```{r}
+gun_own_death <- as.tibble(inner_join(gun_ownership, gun_deaths, by = NULL))
+gun_own_death <- rename(gun_own_death, Deaths_per_100k = `Deaths per 100000`)
+gun_own_death <- rename(gun_own_death, Yes_per = `Yes %`)
+
+ggplot(data = gun_own_death, aes(x = reorder(State, Deaths_per_100k), y = Deaths_per_100k, group = State, alpha = 0.9)) +
+  geom_col(aes(y = Deaths_per_100k, fill = "Deaths_per_100k", width = 0.8), position = position_dodge2(preserve = "total")) +
+  geom_col(aes(y = Yes_per/3, fill = "Yes_per", width=0.5), position = position_dodge2(preserve = "total")) +
+  scale_y_continuous(sec.axis = sec_axis(~.*3, name = "Percentage of People Owning Guns")) +
+  theme(axis.text.x=element_text(angle = -80, hjust = 0)) +
+  xlab("State") +
+  ylab("Gun Deaths per 100,000 People") +
+  ggtitle("Comparing Gun Ownership to Gun Deaths by State")
+
+
+library(reshape2)
+gun.long<-melt(select(gun_own_death, State = State, Yes_per = Yes_per, Deaths_per_100k = Deaths_per_100k))
+ggplot(gun.long,aes(State, value, fill=variable))+
+     geom_col(stat="identity",position="dodge") +
+  theme(axis.text.x=element_text(angle = -80, hjust = 0))
+
+
+
+ggplot(data = gun_own_death, aes(x = reorder(State, Deaths_per_100k), y = Deaths_per_100k, group = State)) +
+  geom_col(aes(y= Deaths_per_100k, fill = Yes_per), 
+    stat = 'identity',
+    position = 'dodge') +
+  scale_y_continuous(sec.axis = sec_axis(~.*3, name = "Percent Own Guns")) +
+  theme(axis.text.x=element_text(angle = -80, hjust = 0))
+```
+
+```{r}
+gun_own_death <- as.tibble(inner_join(gun_ownership, gun_deaths, by = NULL))
+gun_own_death <- rename(gun_own_death, `Gun Deaths per 100000` = `Deaths per 100000`)
+gun_own_death <- rename(gun_own_death, `Percent Owning Guns` = `Yes %`)
+
+ggplot(data = gun_own_death, aes(x = reorder(State, `Gun Deaths per 100000`), y = `Gun Deaths per 100000`, group = State)) +
+  geom_col(aes(y = `Gun Deaths per 100000`, fill = "Gun Deaths per 100000"), width = 0.8, position = position_dodge2(preserve = "total")) +
+  geom_col(aes(y = `Percent Owning Guns`/3, fill = "Percent Owning Guns"), width=0.5, alpha = 0.8, position = position_dodge2(preserve = "total")) +
+  scale_y_continuous(sec.axis = sec_axis(~.*3, name = "Percentage of People Owning Guns")) +
+  theme(axis.text.x=element_text(angle = -80, hjust = 0)) +
+  xlab("State") +
+  ylab("Gun Deaths per 100,000 People") +
+  labs(fill = "Variables") +
+  theme(legend.position = "top") +
+  ggtitle("Comparing Gun Ownership to Gun Deaths by State") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+ggplot(data = gun_own_death, aes(x = reorder(State, `Percent Owning Guns`), y = `Gun Deaths per 100000`, group = State)) +
+  geom_col(aes(y = `Percent Owning Guns`/3, fill = "Percent Owning Guns"), width=0.8, position = position_dodge2(preserve = "total")) +
+  scale_y_continuous(sec.axis = sec_axis(~.*3, name = "Percentage of People Owning Guns")) +
+  geom_col(aes(y = `Gun Deaths per 100000`, fill = "Gun Deaths per 100000"), width = 0.5, alpha = 0.8) +
+  theme(axis.text.x=element_text(angle = -80, hjust = 0)) +
+  xlab("State") +
+  ylab("Gun Deaths per 100,000 People") +
+  labs(fill = "Variables") +
+  theme(legend.position = "top") +
+  ggtitle("Comparing Gun Ownership to Gun Deaths by State") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
 - What is the pattern of gunsales over time?  
 - What are the individual level patterns of gun deaths? Are gun regulations (e.g. child access prevention laws) associated with lower gun death rates? How about suicides (especially by non-adults)?
+
 ## Sharing you explorations and insights
 - Try using R Markdown and GitHub to start sharing your results with me and everyone in the class. Use the `sandbox` repository. If you do, please use your own folder so it does not conflict with other uploaded files.
 - Use R-Studio to create a markdown file with your code, some comments on the process and your output, any snags or bugs your ran into.
