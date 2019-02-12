@@ -1,0 +1,305 @@
+---
+title: "2019.2.11 - Class 3"
+author: "Michael Weisner"
+date: "2/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Agenda
+
+1. Gestalt Principles - grouping items in a vizualization
+2. ggplot2
++ additional geoms()
++ changing the details of plots
+3. Some design principles from Edward Tufte
+
+## Assignment 1
+Febrary 25th at 5 pm!
+
+Remember, check online resources first. Come to TAs when stumped.
+
+## Final Project
+3-4 People create an interactive website with accompanying project book.
+
+1. Static images
+2. Maps
+3. Visualizations of text analyses
+4. Network Visualizations
+
+Prepare a hosted, interactive display of some visualizations.
+
+### Data
+
+1. be larger dataset to allow analysis in different forms
+2. contain at best one or more of the following:
++ some geographic identifiers (cities, addresses, lat-long) to allow mapping
++ some text to allow simple text analyses
++ contain a network matrix to plot visual networks
+
+Preference is for data that you either put together yourself from existing datasets or using some API to collect data you need.
+
+### Output
+Your final output should be something that you could use as a porfolio for job applications to show skills
+
+### Hypothetical Example
+
++ __Title__: Unhealthy habits - bad diets are the root of obesity epidemic
++ __Abstract__: Obesity epidemic in US... bad diets are to blame... explore how have diets changed over time... how are diets related to socio-economic factors
++ __Possible Data__:
++ + adult and changed obesity rates in the U.S. (CDC) and the World (WHO) pair with geographic infor
++ + Pew Research surveys on food and nutrition attitudes and how diets have changed
++ + Content of Recipes changed over time (text analysis of recipes for measurements)
++ + Spread of Obesity in a large social network
++ __Process Book__: create an accumulation of how you got to your end goal ( could even include pictures of hand drawn ideas).
+
+## Slides
++ ioslides are html5 slides.
++ Xaringan based on remark.js is good for picture rich slides.
++ reveal.js package offers good looking slides and nice transitions
++ Beamer is like latex.
+
+## Gestalt Principles
+
+
+### Simplicity 
+Human brain loves simplicity, and tends to process simple patterns that are regular, even, and orderly faster than patterns that are more complex.
+
+### Similarity
+We identify things that are similar.
+
+### Proximity
+Elements close to each other are perceived as part of one group. We group things.
+
+### Connectedness
+We like things that are connected as grouped
+
+### Continuity
+Smooth lines are easier to follow
+
+### Completion
+We automatically and spontaneously perceive a full circle behind a square.
+
+### Figure Ground
+We can easily think of figures as what's in the foreground rather than the background. When those aren't obvious is when we have trouble.
+
+### Common Fate
+Elements with the same moving direction are perceived as a unity
+
+### Takeaways
+
+- **Similarity**: Keep it simple. Arrange data logically wherever possible. Use similar characteristics (color, size, shape, etc.) to establish relationships and to encourage groupings of objects.
+- **Proximity**: Know what your chart’s information priority is, and then create groupings through proximity to support that priority.
+- **Connection**: Use connected lines, shapes, and color regions as visual guides.
+- **Continuity**: Arrange objects in a line to facilitate grouping and comparison.
+- **Completion**: Use our tendency to visually complete shapes to reduce clutter. 
+- **Figure/Ground**: Ensure there is enough contrast between your foreground and background so that charts and graphs are more legible.
+- **Common Fate**: Use direction and/or movement to establish or negate relationships.
+
+## Edward Tufte
+
+Napoleon's Failure example.
+
+"Clutter and confusion are not attributes of information [but rather] failure of design" - Edward Tufte
+
+So, let's remove non-data "clutter" and elevate the data from the noise.
+
+But it can't be ALL the clutter, because visual pieces can be good to make it more eye catching, draw your attention to important parts, and ultimately make it memorable.
+
+### Tufte's Integrity and Design Principles
+
+#### Strive for **graphical integrity**. Visual representations of data must tell the **truth**.
+
+Graphical effects should be proportional to the numerical quantities
+
+#### Clear, detailed, and thorough labeling and appropriate scales
+
+#### Show Data variation, not Design variation.
+
+#### in time-series displays of money, defalated and standardized units of monetary measurements are nearly always better than nominal units.
+
+#### Maximize data=ink ratio
+
+#### Avoid Chart Junk
+
+#### Increase Data Density
+
+Proportion of the total size of the graph that is dedicated to displaying data
+
+Data density of a graphic = (number of entires in a data matrix) / (area of data graphic)
+
+
+Refer to Tufte's graph about what kind of graph to use (relationship, comparison, distribution, composition).
+
+
+## Applying Tufte to ggplot2
+
+Sometimes you can't avoid tricks or hacks.
+
+### Example Line Plot
+
+```{r}
+library(ggplot2)
+x <- 1967:1977
+y <- c(0.5,1.8,4.6,5.3,5.3,5.7,5.4,5,5.5,6,5)
+d <- data.frame(x, y)
+ggplot(d, aes(x,y)) + geom_line()
+```
+
+### Minimal Line Plot
+Remember, you can make your own themes!
+```{r}
+ggplot(d, aes(x,y)) + geom_line() + geom_point(size=3) + 
+  #theme_tufte(base_size = 15) + 
+  theme(axis.title=element_blank()) +
+  geom_hline(yintercept = c(5,6), lty=2) + 
+  scale_y_continuous(breaks=seq(1, 6, 1), 
+                     label=sprintf("$%s",seq(300,400,20))) + 
+  scale_x_continuous(breaks=x,label=x) +
+  annotate("text", x = c(1977,1977.2), y = c(1.5,5.5), 
+           adj=1, family="serif", label = c(
+          "Per capita\nbudget expenditures\nin constant dollars", 
+          "5%"))
+```
+
+### Bar Plot
+
+```{r}
+library(psych)
+library(tidyverse)
+dat <- colMeans(msq[,c(2,7,34,36,42,43,46,55,68)], na.rm = T)*10
+
+d <- tibble(trait = names(dat), value = dat)
+
+ggplot(d, aes(x=trait, y=value)) + 
+  geom_bar(stat = "identity")
+
+```
+
+
+### **Minimal** Bar Plot
+
+```{r}
+ggplot(d, aes(x=trait, y=value)) + 
+  #theme_tufte(base_size=14, ticks=F) + 
+  theme(axis.title=element_blank()) +
+  geom_bar(width=0.25, fill="gray", stat = "identity") + 
+  scale_y_continuous(breaks=seq(1, 5, 1)) + 
+  geom_hline(yintercept=seq(1, 5, 1), col="white", lwd=1) +
+  annotate("text", x = 3.5, y = 5, adj=1,  family="serif",
+  label = c("Average scores\non negative emotion traits
+          from 3896 participants\n(Watson et al., 1988)"))
+```
+
+
+### Boxplot
+
+
+```{r}
+ggplot(quakes, aes(factor(mag),stations)) +
+  geom_boxplot()
+```
+
+### **Minimal** Boxplot
+
+
+```{r}
+ggplot(quakes, aes(factor(mag),stations)) + 
+  #theme_tufte() +
+ # geom_tufteboxplot(outlier.colour="transparent") + 
+  geom_boxplot() +
+  theme(axis.title=element_blank()) +
+  annotate("text", x = 8, y = 120, adj=1,  family="serif",
+  label = c("Number of stations \nreporting 
+            Richter Magnitude\nof Fiji earthquakes (n=1000)"))
+```
+
+### Slopegraph
+```{r error=TRUE}
+library(RCurl)
+# Get some functions for the slope graph
+source_url("https://raw.githubusercontent.com/jkeirstead/r-slopegraph/master/slopegraph.r")
+# The data is here
+d <- read.csv(text = getURL("https://raw.githubusercontent.com/jkeirstead/r-slopegraph/master/cancer_survival_rates.csv"))
+head(d)
+```
+
+```{r error=TRUE}
+# Using James Keirstead’s GitHubs functions
+# https://github.com/jkeirstead/r-slopegraph
+## Convert raw data to right format
+
+df <- build_slopegraph(d, x="year", y="value", 
+                       group="group", method="tufte", 
+                       min.space=0.04)
+df$x <- df$variable
+df$y <- df$value
+df <- transform(df, x=factor(x, levels=c(5,10,15,20), 
+         labels=c("5 years","10 years","15 years","20 years")), 
+         y=round(y))
+```
+
+```{r error=TRUE}
+plot_slopegraph(df) + 
+  labs(title = "Estimates 
+       of % survival rates") +
+  theme_tufte(base_size=16, 
+              ticks=F) + 
+  theme(axis.title = 
+          element_blank())
+
+```
+
+### Sparklines
+```{r error=TRUE}
+# Read in Data
+d <- read_csv("data/us_nr_of_crimes_1960_2014.csv")
+d <- tidyr::gather(d, Crime.Type = "Total":"Vehicle-Theft")
+names(d) <- c("Year","Crime.Type","Crime.Rate")
+
+# Get summary statistics we want to highlight in Sparkline Graph
+d$Crime.Rate <- round(d$Crime.Rate,0)
+mins <- group_by(d, Crime.Type) %&gt;% slice(which.min(Crime.Rate))
+maxs <- group_by(d, Crime.Type) %&gt;% slice(which.max(Crime.Rate))
+ends <- group_by(d, Crime.Type) %&gt;% filter(Year == max(Year))
+```
+
+```{r error=TRUE}
+## Get quartile ranges for plot
+d <- d %&gt;% group_by(Crime.Type) %&gt;%
+  mutate(quart1 = quantile(Crime.Rate, probs = 0.25),
+         quart2 = quantile(Crime.Rate, probs = 0.75))
+d
+```
+
+```{r error=TRUE}
+# Lot's of options - that is the "hacky" part
+ggplot(d, aes(x=Year, y=Crime.Rate)) + 
+  facet_grid(Crime.Type ~ ., scales = "free_y") + 
+  geom_ribbon(aes(ymin = quart1, max = quart2), fill = 'grey90') +
+  geom_line(size=0.3) +
+  geom_point(data = mins, col = 'red') +
+  geom_point(data = maxs, col = 'blue') +
+  geom_text(data = mins, aes(label = Crime.Rate), vjust = -1) +
+  geom_text(data = maxs, aes(label = Crime.Rate), vjust = 2.5) +
+  geom_text(data = ends, aes(label = Crime.Rate), 
+            hjust = 0, nudge_x = 1) +
+  geom_text(data = ends, aes(label = Crime.Type), 
+            hjust = 0, nudge_x = 5) +
+  expand_limits(x = max(d$Year) + 
+                  (0.25 * (max(d$Year) - min(d$Year)))) +
+  scale_x_continuous(breaks = seq(1960, 2010, 10)) +
+  scale_y_continuous(expand = c(0.1, 0)) +
+  theme_tufte(base_size = 15, base_family = "Helvetica") +
+  theme(axis.title=element_blank(), axis.text.y = element_blank(), 
+        axis.ticks = element_blank(), strip.text = element_blank())
+
+```
+
+## Economist Graph in ggplot2
+Let's try to re-create [this graph](http://www.economist.com/node/21541178) using ggplot2:
+
+
