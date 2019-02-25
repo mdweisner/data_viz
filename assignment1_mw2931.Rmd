@@ -1,0 +1,521 @@
+---
+title: "Assignment 1: Using ggplot2 for visualization"
+author: Michael Weisner
+date: 2019-02-10
+---
+
+Summer Olympics Medals over Time
+================================
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Medal Counts over Time
+
+### a) Combine the information in the three spreadsheets `athletes_and_events.csv`, `noc_regions.csv`, and  `gdp_pop.csv`. Note, that the `noc_regions.csv` is the set of all NOC regions, while `gdp_pop.csv` only contains a snapshot of the current set of countries. You have to decide what to do with some [countries that competed under different designations in the past (e.g. Germany and Russia)](https://en.wikipedia.org/wiki/All-time_Olympic_Games_medal_table) and some defunct countries and whether and how to combine their totals. Make sure to be clear about your decisions here, so that the editor (and potentially a user of your visualizations) understands what you did.
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+athlete_events <- read_csv("Homework/Assignment1/athletes_and_events.csv")
+gdp_pop <- read_csv("Homework/Assignment1/gdp_pop.csv")
+noc_regions <- read_csv("Homework/Assignment1/noc_regions.csv")
+```
+```{r}
+str(athlete_events)
+```
+
+```{r}
+str(gdp_pop)
+```
+
+```{r}
+str(noc_regions)
+```
+
+#### Combining Data
+
+I want to only keep 
+```{r}
+gdp_pop2 <- gdp_pop
+gdp_pop2 <- rename(gdp_pop2, NOC = Code)
+noc_gdp_pop <- left_join(x = noc_regions, y = gdp_pop2, by = NULL)
+head(noc_gdp_pop)
+head(noc_gdp_pop[is.na(noc_gdp_pop$Population), ], n = 10)
+noc_gdp_pop[duplicated(noc_gdp_pop$region),] %>% 
+  arrange(region)
+```
+
+```{r}
+dup_countries <- unique(noc_gdp_pop$region[duplicated(noc_gdp_pop$region)])
+head(dup_countries)
+noc_gdp_pop[noc_gdp_pop$region %in% dup_countries, ] %>% 
+  arrange(region)
+```
+
+```{r}
+full_olympics <- left_join(x = athlete_events, y = noc_gdp_pop)
+dim(full_olympics)
+(full_olympics %>%
+  arrange(region, Country))
+dim(full_olympics)
+```
+
+Fix missing countries
+```{r}
+full_olympics$Country <- ifelse(is.na(full_olympics$Country), full_olympics$region, full_olympics$Country)
+```
+
+Data Cleaning
+```{r}
+full_olympics[is.na(full_olympics$NOC), ]
+# Just one so let's just drop it
+full_olympics <- full_olympics %>%
+  filter(!is.na(NOC)) # remove missing NOCs
+```
+
+```{r}
+full_olympics$Country <- gsub( "[/*]", "", full_olympics$Country)
+full_olympics$Team <- gsub("-1", "", full_olympics$Team)
+full_olympics$Team <- gsub("-2", "", full_olympics$Team)
+full_olympics$Team <- gsub("-3", "", full_olympics$Team)
+
+## Let's recode all of the Germany NOCs as GER and get the countries to be Germany
+full_olympics$Country[full_olympics$NOC == "FRG"] <- "Germany"
+full_olympics$NOC[full_olympics$NOC == "FRG"] <- "GER"
+full_olympics$Country[full_olympics$NOC == "GDR"] <- "Germany"
+full_olympics$NOC[full_olympics$NOC == "GDR"] <- "GER"
+full_olympics$Country[full_olympics$NOC == "EUA"] <- "Germany"
+full_olympics$NOC[full_olympics$NOC == "EUA"] <- "GER"
+
+## Make the USSR and the Unified Team (former USSR) all Russia for clarity
+full_olympics$Country[full_olympics$NOC == "URS"] <- "Russia"
+full_olympics$NOC[full_olympics$NOC == "URS"] <- "RUS"
+full_olympics$Country[full_olympics$NOC == "EUN"] <- "Russia"
+full_olympics$NOC[full_olympics$NOC == "EUN"] <- "RUS"
+full_olympics$Country[full_olympics$NOC == "RU1"] <- "Russia"
+full_olympics$NOC[full_olympics$NOC == "RU1"] <- "RUS"
+full_olympics$Country[full_olympics$NOC == "OAR"] <- "Russia" # since it's specifically athletes from Russia
+full_olympics$NOC[full_olympics$NOC == "OAR"] <- "RUS"
+
+## Australasia will just be made into Australia for simplicity (sorry New Zealand)
+full_olympics$Country[full_olympics$NOC == "ANZ"] <- "Australia"
+full_olympics$NOC[full_olympics$NOC == "ANZ"] <- "AUS"
+
+## British West Indies will be recoded as Jamaica since so few medals (sorry to other nations)
+full_olympics$Country[full_olympics$NOC == "BWI"] <- "Jamaica"
+full_olympics$NOC[full_olympics$NOC == "BWI"] <- "JAM"
+
+## Correct Romania
+full_olympics$Country[full_olympics$NOC == "ROU"] <- "Romania"
+
+# Miscellaneous an Independent will be unified as
+full_olympics$Country[full_olympics$NOC == "IOP"] <- "Independent Olympic Athletes"
+full_olympics$NOC[full_olympics$NOC == "IOP"] <- "IOA"
+```
+
+```{r}
+full_olympics %>%
+  select(NOC, Country) %>%
+  unique() %>%
+  arrange(NOC)
+```
+
+### b) Calculate a summary of how many summer games each country competed in, and how many medals of each type the country won. Use that summary to provide a **visual comparison of medal count by country**. 
+
+```{r}
+full_olympics <- full_olympics %>%
+  mutate(gold = ifelse(grepl("gold", tolower(full_olympics$Medal)), 1, 0))
+full_olympics <- full_olympics %>%
+  mutate(silver = ifelse(grepl("silver", tolower(full_olympics$Medal)), 1, 0))
+full_olympics <- full_olympics %>%
+  mutate(bronze = ifelse(grepl("bronze", tolower(full_olympics$Medal)), 1, 0))
+full_olympics$Season <- ifelse(grepl("summer", tolower(full_olympics$Games)), "Summer", "Winter")
+
+minimal_olympics <- full_olympics %>%
+  filter(Season == "Summer") %>%
+  select(NOC, Country, Name, Sex, Year, Event, Medal, gold, silver, bronze)
+```
+
+Create the Top 10 All Time Medal Earning Countries
+```{r}
+top_10 <- minimal_olympics %>%
+  select(NOC, Country, Year, Name, Sex, Event, gold, silver, bronze)
+
+top_10 <- aggregate(. ~ NOC+Country+Year+Name+Sex+Event, data = top_10, sum)
+(filter(top_10, Year == 2016 & Event == "Basketball Women's Basketball"))
+```
+
+```{r}
+top_10 <- top_10 %>%
+  select(-Year, -Name, -NOC, -Event, -Sex)
+top_10 <- aggregate(. ~ Country, data = top_10, sum)
+top_10$tot_medals <- rowSums(top_10[, c("gold", "silver", "bronze")])
+
+top_10 <-  top_10 %>%
+  arrange(desc(tot_medals)) %>%
+  mutate(rank=row_number()) %>%
+  filter(rank <= 10)
+top_10
+```
+
+Filter Minimal Olympics to Top 10
+```{r}
+(min_olympics_top <- subset(minimal_olympics[minimal_olympics$Country %in% top_10$Country, ]) %>% arrange(Year, Country))
+```
+
+```{r}
+min_olympics_top_agg <- min_olympics_top %>%
+  select(-Name, -NOC)
+min_olympics_top_agg <- aggregate(. ~ Country+Year+Sex+Event, data = select(min_olympics_top_agg, -Medal), sum)
+min_olympics_top_agg$total_medals <- rowSums(min_olympics_top_agg[, c("gold", "silver", "bronze")])
+min_olympics_top_agg
+```
+
+I'm having issues with the y axis so let's find the most of any medal type won in an olympic year for the top 10.
+
+```{r}
+medals_year <- min_olympics_top_agg %>%
+  select(Year, gold, silver, bronze)
+medals_year <- aggregate(. ~ Year, data = medals_year, sum)
+arrange(medals_year, desc(gold))
+arrange(medals_year, desc(silver))
+arrange(medals_year, desc(bronze))
+```
+
+With the maximum total number of medals in a given year being 12 for both gol and silver we can create a range.
+
+```{r}
+
+gender_labels <- c("F" = "Female", "M" = "Male")
+
+library(ggplot2)
+library(ggthemes)
+library(plotly)
+library(RColorBrewer)
+gg_p_gold <- min_olympics_top_agg %>%
+  ggplot(., aes(x = Year, y = total_medals, fill = Country)) +
+  geom_col(aes(y = gold), width = 2) +
+  facet_wrap(~Sex, labeller = as_labeller(gender_labels)) +
+  theme_tufte(ticks = TRUE) +
+  theme( axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_brewer(palette= "Spectral") +
+  scale_y_continuous(breaks=c(0:12)) +
+  scale_x_continuous(breaks=c(1896, 1904, 1912, 1920, 1928, 1936, 1944, 1952, 1960, 1968, 1976, 1984, 1992, 2000, 2008, 2016)) +
+  xlab("Year of Summer Olympics") +
+  ylab("Number of Medals Won") +
+  ggtitle("Men and Womens' Olympic Gold Medals by Year for Top Winning Countries")
+
+ggplotly(gg_p_gold)
+```
+
+```{r}
+gg_p_silv <- min_olympics_top_agg %>%
+  ggplot(., aes(x = Year, y = total_medals, fill = Country)) +
+  geom_col(aes(y = silver), width = 2) +
+  facet_wrap(~Sex, labeller = as_labeller(gender_labels)) +
+  theme_tufte(ticks = TRUE) +
+  theme( axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_brewer(palette= "Spectral") +
+  scale_y_continuous(breaks=c(0:12)) +
+  scale_x_continuous(breaks=c(1896, 1904, 1912, 1920, 1928, 1936, 1944, 1952, 1960, 1968, 1976, 1984, 1992, 2000, 2008, 2016)) +
+  xlab("Year of Summer Olympics") +
+  ylab("Number of Medals Won") +
+  ggtitle("Men and Womens' Olympic Silver Medals by Year for Top Winning Countries")
+
+ggplotly(gg_p_silv)
+```
+
+
+```{r}
+gg_p_bron <- min_olympics_top_agg %>%
+  ggplot(., aes(x = Year, y = total_medals, fill = Country)) +
+  geom_col(aes(y = bronze), width = 2) +
+  facet_wrap(~Sex, labeller = as_labeller(gender_labels)) +
+  theme_tufte(ticks = TRUE) +
+  theme( axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_brewer(palette= "Spectral") +
+  scale_y_continuous(breaks=c(0:12)) +  xlab("Year of Summer Olympics") +
+  scale_x_continuous(breaks=c(1896, 1904, 1912, 1920, 1928, 1936, 1944, 1952, 1960, 1968, 1976, 1984, 1992, 2000, 2008, 2016)) +
+  ylab("Number of Medals Won") +
+  ggtitle("Men and Womens' Olympic Bronze Medals by Year for Top Winning Countries")
+
+ggplotly(gg_p_bron)
+```
+
+I was hoping to figure out a facet wrap to work with all gender and medals, but I think running it separately was cleaner. I wanted to make it interactive so you could see specific numbers. The stacked is helpful to show how many medals the top 10 won in a given year and the proportions of each country, but the interactivity makes it a little easier to parse.
+
+### **Bonus Point:** Currently, the medal data contains information on _each athlete_ competing, including for team events. For example, in 2016 China received _12 gold medals for their women's win in volleyball_ alone. Since this is usually not how it is done in official medal statistics, try to wrangle the data so that _team events are counted as a single medal_. 
+
+```{r}
+(filter(athlete_events, Year == 2016 & Sex == "F" & Sport == "Volleyball"))
+```
+I'm surprised that the athlete events data doesn't seem to actually have the aforementioned data? I'm unsure what's going on here but I do see there are a few cases where we might have medal overlap (as seen in the two women's Bronze Medals for Women's Volleyball in 2016).
+
+So we would probably want to organize the data like this.
+
+```{r}
+per_sport <- full_olympics %>%
+  filter(Season == "Summer") %>%
+  select(Country, Year, Sex, Event, Medal)
+
+per_sport <- per_sport %>%
+  mutate(gold = 0)
+per_sport <- per_sport %>%
+  mutate(silver = 0)
+per_sport <- per_sport %>%
+  mutate(bronze = 0)
+per_sport <- aggregate(. ~ Country+Year+Sex+Event+Medal, data = per_sport, sum)
+arrange(per_sport, Country)
+```
+
+```{r}
+library(ggplot2)
+library(ggthemes)
+library(plotly)
+per_sport <- per_sport %>%
+    mutate(gold = ifelse(grepl("gold", tolower(per_sport$Medal)), 1, 0))
+per_sport <- per_sport %>%
+    mutate(silver = ifelse(grepl("silver", tolower(per_sport$Medal)), 1, 0))
+per_sport <- per_sport %>%
+    mutate(bronze = ifelse(grepl("bronze", tolower(per_sport$Medal)), 1, 0))
+
+per_sport_agg <- select(per_sport, -Medal, -Event, -Sex)
+per_sport_agg <- aggregate(. ~ Country+Year, data = per_sport_agg, sum)
+
+gg_per_gold <- per_sport_agg %>%
+  filter(per_sport_agg$gold != 0) %>%
+  ggplot(., aes(x = Year, y = total_medals, fill = Country)) +
+  geom_col(aes(y = gold), width = 2) +
+  theme_tufte(ticks = TRUE) +
+  theme( axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab("Event of Summer Olympics") +
+  ylab("Number of Medals Won") +
+  ggtitle("Men and Womens' Olympic Bronze Medals by Year for Top Winning Countries")
+
+ggplotly(gg_per_gold)
+```
+
+Above is the number of gold medals per country per year counting only one medal per event. I could do the same with silver and bronze, but that's the general idea.
+
+I'm still concerned that the athlete_events.csv is missing data given the lack of 12 Chinese women's volleyball gold medal winners in 2016.
+
+## 2. Medal Counts adjusted by Population, GDP
+
+There are different ways to calculate "success". Consider the following variants and choose one (and make sure your choice is clear in the visualization):  
+  - Just consider gold medals.  
+  - Simply add up the number of medals of different types.    
+  - Create an index in which medals are valued differently. (gold=3, silver=2, bronze=1).   
+  - A reasonable other way that you prefer.
+  
+Now, adjust the ranking of medal success by (a) GDP per capita and (b) population. You have now three rankings: unadjusted ranking, adjusted by GDP per capita, and adjusted by population.
+
+
+### Unweighted
+```{r}
+unweighted_per_sport <- left_join(x = per_sport_agg, y = gdp_pop, by = NULL)
+```
+
+Now let's create a medal score system.
+```{r}
+unweighted_per_sport$total_medals <- rowSums(unweighted_per_sport[, c("gold", "silver", "bronze")])
+unweighted_per_sport <- unweighted_per_sport %>% 
+  mutate(medal_score = gold*3 + silver*2 + bronze*1)
+unweighted_per_sport <- unweighted_per_sport %>%
+  mutate(medal_score_pop = (total_medals / (Population / 1000000)) * medal_score) # the medal score will be weighted as medal score per 100,000 people * the medal score
+unweighted_per_sport <- unweighted_per_sport %>%
+  mutate(medal_score_gdp = (total_medals / (`GDP per Capita`)) * medal_score) # this is total medals divided by the total GDP per 100,000  people * the medal score
+arrange(unweighted_per_sport, desc(medal_score))
+arrange(unweighted_per_sport, desc(medal_score_pop))
+arrange(unweighted_per_sport, desc(medal_score_gdp))
+```
+
+
+Visualize how these rankings differ. Feel free to highlight a specific pattern (e.g. "South Korea -- specialization reaps benefits" or "The superpowers losing their grip").
+
+Let's look at the countries with the top 4 highest medal score of all time by looking at the cumulative medal score.
+
+```{r}
+unweighted_per_sport_top <- unweighted_per_sport %>%
+  arrange(Year) %>%
+  group_by(Country) %>%
+  mutate(ms_cumsum = cumsum(medal_score))
+
+unweighted_per_sport_top <- unweighted_per_sport_top %>%
+  arrange(Year) %>%
+  group_by(Country) %>%
+  mutate(ms_pop_cumsum = cumsum(medal_score_pop))
+
+unweighted_per_sport_top <- unweighted_per_sport_top %>%
+  arrange(Year) %>%
+  group_by(Country) %>%
+  mutate(ms_gdp_cumsum = cumsum(medal_score_gdp))
+
+unweighted_per_sport_top %>%
+  filter(Country == "United States")
+```
+
+```{r}
+
+top_5_ms <-  unweighted_per_sport_top %>%
+  ungroup() %>%
+  filter(Year == 2016) %>%
+  arrange(desc(ms_cumsum)) %>%
+  mutate(rank=row_number()) %>%
+  filter(rank <= 5)
+top_5_ms
+```
+
+
+```{r}
+library(ggplot2)
+library(ggthemes)
+library(plotly)
+
+unweighted_per_sport_top5 <- unweighted_per_sport_top %>%
+  filter(Country %in%  top_5_ms$Country)
+
+gg_medal_unw <- ggplot(data = unweighted_per_sport_top5, aes(x = Year, y = ms_cumsum), group=interaction(Country, Year)) +
+  geom_line(aes(y = ms_cumsum, colour = Country)) +
+  theme_tufte(ticks = TRUE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab("Year") +
+  ylab("Cumulative Medal Score") +
+  ggtitle("Cumulative Unweighted Medal Scores by Country Without Weights")
+
+ggplotly(gg_medal_unw)
+```
+
+```{r}
+gg_medal_pop <- ggplot(data = unweighted_per_sport_top5, aes(x = Year, y = ms_pop_score), group=interaction(Country, Year)) +
+  geom_line(aes(y = ms_pop_cumsum, colour = Country)) +
+  theme_tufte(ticks = TRUE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab("Year") +
+  ylab("Cumulative Medal Score weighted by Population") +
+  ggtitle("Cumulative Unweighted Medal Scores by Country Adjusted for Population")
+
+ggplotly(gg_medal_pop)
+
+```
+
+```{r}
+gg_medal_gdp <- ggplot(data = unweighted_per_sport_top5, aes(x = Year, y = ms_gdp_cumsum), group=interaction(Country, Year)) +
+  geom_line(aes(y = ms_gdp_cumsum, colour = Country)) +
+  theme_tufte(ticks = TRUE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab("Year") +
+  ylab("Cumulative Medal Score weighted by GDP") +
+  ggtitle("Cumulative Unweighted Medal Scores by Country Adjusted for GDP")
+
+ggplotly(gg_medal_gdp)
+```
+
+Interestingly, while the USA has scored the highest unweighted score, Russia has performed the best when weighted for population and GDP. GDP puts the other top countries much closer together. It would be interesting if we have a yearly population and GDP.
+
+## 3. Host Country Advantage
+
+Until the 2016 Rio Summer Olympics (our data ends here), there were 23 host cities. Calculate whether the host nation had an advantage. That is calculate whether the host country did win more medals when the Summer Olympics was in their country compared to other times. 
+
+Note, that the 23 host cities are noted in the data but not  the countries they are located in. This happens commonly and often Wikipedia has the [kind of additional data you want for the task](https://en.wikipedia.org/wiki/Summer_Olympic_Games). To save you some time, here is a quick way to get this kind of table from Wikipedia into R:
+
+```{r echo=TRUE}
+library(rvest)
+library(stringr)
+wiki_hosts <- read_html("https://en.wikipedia.org/wiki/Summer_Olympic_Games")
+hosts <- html_table(html_nodes(wiki_hosts, "table")[[8]], fill=TRUE)
+hosts <- hosts[-1,1:3]
+hosts$city <- str_split_fixed(hosts$Host, n=2, ",")[,1]
+hosts$country <- str_split_fixed(hosts$Host, n=2, ",")[,2]
+```
+
+Provide a visualization of the host country advantage (or abscence thereof).
+
+```{r}
+hosts$Year <- as.numeric(hosts$Year)
+hosts <- rename(hosts, host_country = country)
+host_adv <- left_join(unweighted_per_sport_top, hosts) 
+```
+
+```{r}
+host_adv <- host_adv %>%
+  group_by(Year) %>%
+  group_by(Country) %>%
+  mutate(mean_medal_score =  mean(medal_score))
+
+filter(host_adv, Country == "United States")
+```
+
+```{r}
+host_countries <- unique(host_adv$host_country[!is.na(host_adv$host_country)])
+host_countries <- substring(host_countries, 2)
+host_countries[host_countries == "West Germany"] <- "Germany"
+host_countries[host_countries == "Soviet Union"] <- "Russia"
+host_countries <- sort(host_countries)
+host_countries
+```
+
+```{r}
+unique(host_adv$host_country)
+host_adv$host_country <- substring(host_adv$host_country, 2)
+host_adv$host_country[host_adv$host_country == "West Germany"] <- "Germany"
+host_adv$host_country[host_adv$host_country == "Soviet Union"] <- "Russia"
+unique(host_adv$host_country)
+```
+
+```{r}
+host_adv_minimal <- host_adv %>%
+  filter(Country == host_country)
+host_adv_minimal
+```
+
+```{r}
+host_adv_minimal$diff <- host_adv_minimal$medal_score - round(host_adv_minimal$mean_medal_score, digits = 3)
+mean(host_adv_minimal$diff)
+gg_advantage <- ggplot(data = host_adv_minimal, aes(x = Country, y = medal_score)) +
+  geom_hline(yintercept = 2.065) +
+  geom_jitter(aes(y = diff, colour = Country)) +
+  theme_tufte(ticks = TRUE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  xlab("Host Countries") +
+  ylab("Difference Between Medal Score of Host Year vs Average Medal Score") +
+  ggtitle("Comparing Mean Medal Score to Olympics Host Year Performance")
+
+ggplotly(gg_advantage)  
+```
+
+While there's an average increase in performance for host countries, there is not for countries like the US.
+
+## 4. Most successful athletes
+
+### a) Now, let's look at the most successful athletes. Provide a visual display of the most successful athletes of all time.
+
+### b) Choose one or two additional dimensions among gender, height, weight, sport, discipline, event, year, and country to highlight an interesting pattern in the data.
+
+# Interactivity
+
+## 5. Make two plots interactive
+
+Choose 2 of the plots you created above and add interactivity. Briefly describe to the editor why interactivity in these visualization is particularly helpful for a reader.
+
+I already did this in all of my plots! I think that it's most helpful because, as we discussed, it can be hard to eyeball proportional differences and specific values and I was worried that there were too many colors to easily translate for the user, so they could simply hover over for clarity.
+
+## 6. Data Table
+
+Prepare a selected dataset and add a datatable to the output. Make sure the columns are clearly labelled. Select the appropriate options for the data table (e.g. search bar, sorting, column filters etc.). Suggest to the editor which kind of information you would like to provide in a data table in the online version of the article and why.
+
+```{r}
+library(DT)
+host_dt <- host_adv_minimal %>%
+  select(Country, Year, gold, silver, bronze, Population, `GDP per Capita`, medal_score, mean_medal_score)
+host_dt$`GDP per Capita` <- round(host_dt$`GDP per Capita`, digits = 3)
+datatable(host_dt)
+```
+
+I'm a bit confused by this question, but have provided an interactive data table of the pertinent information included in the host advantage question, including sorting and search filtering.

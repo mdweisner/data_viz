@@ -1,0 +1,960 @@
+
+title: "2019.2.18 Class 4"
+author: "Michael Weisner"
+date: "2/18/2019"
+output: html_document
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+```
+
+
+## Example of making a plot from the Economist
+
+### Get the data
+
+The data for the exercises is available in the `data/EconomistData.csv` file. Read it in with
+
+```{r}
+library(readr)
+data <- read_csv("data/economistdata.csv")
+```
+
+<small><small>
+Original sources for these data are
+
+<http://www.transparency.org/content/download/64476/1031428> 
+
+<http://hdrstats.undp.org/en/indicators/display_cf_xls_indicator.cfm?indicator_id=103106&lang=en>
+
+</small></small>
+
+These data consist of *Human Development Index* and *Corruption Perception Index* scores for several countries.
+
+
+
+# Scatter plot
+
+```{r}
+library(ggplot2)
+  ggplot(data, aes(x = CPI, y = HDI)) +
+    geom_point()
+```
+
+
+
+# Color scatter by region
+
+```{r}
+pc1 <- ggplot(data, aes(x = CPI, y = HDI, color = Region))
+pc1 + geom_point()
+```
+
+
+
+# Adding a trend line
+
+```{r}
+  (pc2 <- pc1 +
+     geom_smooth(aes(group = 1),
+                 method = "lm",
+                 formula = y ~ log(x),
+                 se = FALSE,
+                 color = "red")) +
+     geom_point()
+```
+
+Notice that we put the `geom_line` layer first so that it will be plotted underneath the points, as was done on the original graph.
+
+
+
+# Use open points
+
+We can change the shape with the `shape` argument, what what value do we set shape to? The example shown in `?shape` can help us:
+
+```{r}
+  ## A look at all 25 symbols
+  df2 <- data.frame(x = 1:5 , y = 1:25, z = 1:25)
+  s <- ggplot(df2, aes(x = x, y = y))
+  s + geom_point(aes(shape = z), size = 4) + scale_shape_identity()
+  ## While all symbols have a foreground colour, symbols 19-25 also take a
+  ## background colour (fill)
+  s + geom_point(aes(shape = z), size = 4, colour = "Red") +
+    scale_shape_identity()
+```
+
+
+
+# Which shape allows fill?
+
+```{r}
+  s + geom_point(aes(shape = z), size = 4, colour = "Red", fill = "Black") +
+    scale_shape_identity()
+```
+
+
+
+# Use *shape 1* in the scatter
+
+```{r}
+  pc2 +
+    geom_point(shape = 1, size = 4)
+```
+
+
+
+# Make stroke around the shape thicker
+
+Pretty good, but the size of the line around the points is much narrower than on the original.
+
+```{r}
+  (pc3 <- pc2 +
+    geom_point(shape = 1, size = 4, stroke=2))
+```
+
+
+
+# Labelling points
+
+There is no attribute in the data that separates points that should be labelled from points that should not be. So the first step is to identify those points.
+
+```{r}
+pointsToLabel <- c("Russia", "Venezuela", "Iraq", "Myanmar", "Sudan",
+                   "Afghanistan", "Congo", "Greece", "Argentina", 
+                   "Brazil", "India", "Italy", "China", 
+                   "South Africa", "Spain", "Botswana", "Cape Verde", 
+                   "Bhutan", "Rwanda", "France", "United States", 
+                   "Germany", "Britain", "Barbados", "Norway", 
+                   "Japan", "New Zealand", "Singapore")
+```
+
+Now we can label these points using `geom_text`.
+
+
+
+# Labelling points
+
+```{r}
+library(dplyr)
+pc3 + geom_text(aes(label = Country),
+              color = "gray20", size = 6,
+              data = filter(data, Country %in% pointsToLabel))
+```
+
+
+
+# Prevent overlapping points
+
+```{r error = TRUE}
+library(ggrepel)
+ (pc4 <- pc3 +
+    geom_text_repel(aes(label = Country),
+              color = "gray20", size = 6,
+              data = filter(data, Country %in% pointsToLabel),
+              force = 10))
+# Not perfect, but will do.
+```
+
+
+
+# Correct region labels and order
+
+Comparing our graph to the original we notice that the labels and order of the Regions in the color legend differ. 
+
+```{r error = TRUE}
+# To correct the labels and order of the Region variable, 
+# we can use the `factor` function.
+data$Region <- factor(data$Region,
+                       levels = c("EU W. Europe",
+                                  "Americas",
+                                  "Asia Pacific",
+                                  "East EU Cemt Asia",
+                                  "MENA",
+                                  "SSA"),
+                       labels = c("OECD",
+                                  "Americas",
+                                  "Asia &\nOceania",
+                                  "Central &\nEastern Europe",
+                                  "Middle East &\nnorth Africa",
+                                  "Sub-Saharan\nAfrica"))
+```
+
+
+
+# Correct region labels and order
+
+```{r error = TRUE}
+  pc4$data <- data
+  pc4
+```
+
+
+
+# Add title and format axes
+
+The next step is to add the title and format the axes. We do that using the `scales` system in ggplot2.
+
+```{r, eval=FALSE}
+library(grid)
+  (pc5 <- pc4 +
+    scale_x_continuous(name = "Corruption Perceptions Index, 
+                       2011 (10=least corrupt)",
+                       limits = c(.9, 10.5),
+                       breaks = 1:10,
+                       expand = c(0, 0)) +
+    scale_y_continuous(name = "Human Development Index, 
+                       2011 (1=Best)",
+                       limits = c(0.2, 1.0),
+                       breaks = seq(0.2, 1.0, by = 0.1),
+                       expand = c(0, 0)) +
+    scale_color_manual(name = "",
+                       values = c("#24576D", "#099DD7",
+                                  "#28AADC", "#248E84",
+                                  "#F2583F", "#96503F")) + 
+    ggtitle("Corruption and human development"))
+```
+
+
+
+# Add title and format axes
+
+```{r, echo=FALSE, fig.width = 9, fig.height = 5}
+library(grid)
+  (pc5 <- pc4 +
+    scale_x_continuous(name = "Corruption Perceptions Index, 2011 (10=least corrupt)",
+                       limits = c(.9, 10.5),
+                       breaks = 1:10,
+                       expand = c(0, 0)) +
+    scale_y_continuous(name = "Human Development Index, 2011 (1=Best)",
+                       limits = c(0.2, 1.0),
+                       breaks = seq(0.2, 1.0, by = 0.1),
+                       expand = c(0, 0)) +
+    scale_color_manual(name = "",
+                       values = c("#24576D", "#099DD7",
+                                  "#28AADC", "#248E84",
+                                  "#F2583F", "#96503F")) + 
+    ggtitle("Corruption and human development"))
+```
+
+--
+
+Our graph is almost there. To finish up, we need to adjust some of the theme elements, and label the axes and legends. 
+
+
+
+# Theme tweaks
+
+```{r, eval=FALSE}
+library(grid) # for the 'unit' function
+  (pc6 <- pc5 +
+    theme_minimal() + # start with a minimal theme and add what we need
+    guides(colour = guide_legend(nrow = 1)) +  # single row for legend
+    theme(text = element_text(color = "gray20"),
+          legend.position = c("top"), # position the legend in the upper left 
+          legend.direction = "horizontal",
+          legend.justification = 0.05, # anchor point for legend.position.
+          legend.text = element_text(size = 11, color = "gray10"),
+          legend.key.height=unit(1,"line"),
+          legend.key.width=unit(3,"line"),
+          axis.text = element_text(face = "italic"),
+          axis.title.x = element_text(vjust = -1), # move title away from axis
+          axis.title.y = element_text(vjust = 2), # move away for axis
+          axis.ticks.y = element_blank(), # element_blank() is how we remove elements
+          axis.line = element_line(color = "gray40", size = 0.5),
+          axis.line.y = element_blank(),
+          panel.grid.major = element_line(color = "gray50", size = 0.5),
+          panel.grid.major.x = element_blank(),
+          plot.margin = margin(t = 0, r = 0, b = 40, l = 5, unit = "pt"),
+          plot.title = element_text(face = "bold", color = "black", size = 25)
+          ))
+```
+
+
+
+
+# Theme tweaks
+
+```{r,echo=FALSE, fig.width = 12, fig.height = 7}
+library(grid) # for the 'unit' function
+  (pc6 <- pc5 +
+    theme_minimal() + # start with a minimal theme and add what we need
+    guides(colour = guide_legend(nrow = 1,  # single row for legend
+                                 keywidth=1.7)) +  
+    theme(text = element_text(color = "gray20"),
+          legend.position = c("top"), # position the legend in the upper left 
+          legend.direction = "horizontal",
+          legend.justification = 0.05, # anchor point for legend.position.
+          legend.text = element_text(size = 15, color = "gray10"),
+          legend.key.height=unit(1,"line"),
+          legend.key.width=unit(3,"line"),
+          axis.text = element_text(size = 15),
+          axis.title = element_text(face = "italic", size = 14),
+          axis.title.x = element_text(vjust = -1), # move title away from axis
+          axis.title.y = element_text(vjust = 2), # move away for axis
+          axis.ticks.y = element_blank(), # element_blank() is how we remove elements
+          axis.line = element_line(color = "gray40", size = 0.5),
+          axis.line.y = element_blank(),
+          panel.grid.major = element_line(color = "gray50", size = 0.5),
+          panel.grid.major.x = element_blank(),
+          plot.margin = margin(t = 0, r = 0, b = 40, l = 5, unit = "pt"),
+          plot.title = element_text(face = "bold", color = "black", size = 25)
+          ))
+```
+
+
+
+# Add model R<sup>2</sup> and source note
+
+The last bit of information that we want to have on the graph is the variance explained by the model represented by the trend line. Lets fit that model and pull out the R<sup>2</sup> first, then think about how to get it onto the graph.
+
+```{r}
+  (mR2 <- summary(lm(HDI ~ log(CPI), data = data))$r.squared)
+```
+
+ggplot2 has an `annotate` function, but this is not convenient for adding elements outside the plot area. The `grid` package has nice functions for doing this, so we'll use those.
+
+And here it is, our final version!
+
+
+
+# Final Version
+
+```{r, eval=FALSE, echo=FALSE, messages=FALSE, warning=FALSE, error = TRUE}
+  library(grid)
+  png(file = "images/economist_scatter.png", width = 800, height = 600)
+  pc6
+  # Source Text
+  grid.text("Sources: Transparency International; UN Human Development Report",
+           x = .01, y = .03,
+           just = "left",
+           draw = TRUE)
+  # Line before R-Squared
+  grid.segments(x0 = 0.88, x1 = 0.905,
+                y0 = 0.92, y1 = 0.92,
+                gp = gpar(col = "red", lwd = 3),
+                draw = TRUE)
+  # R-Squared
+  grid.text(paste0("R² = ",
+                   as.integer(mR2*100),
+                   "%"),
+            x = 0.915, y = 0.92,
+            gp = gpar(col = "gray20", fontsize = 15),
+            draw = TRUE, just = "left")
+  dev.off()
+```
+
+
+Comparing it to the original suggests that we've got most of the important elements, though of course the two graphs are not identical.
+
+
+
+# ggplot2 extensions
+
+[www.ggplot2-exts.org](http://www.ggplot2-exts.org/gallery/) provides extension packages for ggplot2. 
+
+* Here a few good ones:
+  - [`ggalt()`](https://github.com/hrbrmstr/ggalt) has `geom_encircle()` to encircle points automatically.
+  - [`ggthemes()`](https://github.com/jrnold/ggthemes) We have use this before. Adds pre-defined themes to change the look of your plots.
+  - [`ggally()`](http://ggobi.github.io/ggally/) Allows to combine graphs in a matrix, provides simple coefficient plots, and some nice network maps.
+  - [`ggrepel`](https://github.com/slowkow/ggrepel) Repel overlapping text labels away from each other.
+  - [`patchwork`](https://github.com/thomasp85/patchwork) is not listed on the site but a great recent edition to combine separate ggplots into the same graphic. 
+  
+* ggedit() - A GUI to control ggplot2. Install from GitHub with  `devtools::install_github("metrumresearchgroup/ggedit",subdir="ggedit")` if interested.
+
+## DataViz, the Bigger Picture
+
+
+### Data Wrangling   
+Comp sci (acquire and parse)
+
+### EDA   
+Statistics and Data Mining (filter and mine)
+
+### Data Viz
+Graphic Design, Infovis and HCI (Map, Refine, and Interact)
+
+## Why interactivity?
+
++ Pan/Zoom allows navigation.
++ Query: what is the point? get more info.
++ Linked Brushing: Connect multiple graphics, get past 2D.
+
+## Information Vizualization
+
+### Representation vs Interaction
+
+**Representation** Cairo's recommendations for goo viz & principles of viz by Tufte 
+**Interaction** ? There aren't really hard and fast rules.
+
+### What does the user want to achieve?
+
+- **Select**: Mark something as interesting.  
+- **Explore**: Show me something else. Enable users to examine a different subset of data cases.  
+- **Reconfigure**: Show me a different arrangement. E.g. sorting tables, change perspective etc.  
+- **Encode**: Show me a different representation. Changing how the data is visually represented (e.g., changing a pie chart to a histogram) or mapping into attributes (e.g., color, size, and shape). 
+- **Abstract/Elaborate**: Show me more or less detail. Alter the representation from an overview down to details of individual data cases and often many levels in-between.
+- **Filter**: Show me something conditionally. Users specify a range or condition, so that only data items meeting those criteria are presented.
+- **Connect**: Show me related items. _Brushing_ technique to highlight the representation of a selected data item in the other views being displayed.
+
+
+## So what's the goal of Visualization?
+
+1. What is the **goal of the visualization**? 
+2. What kind of Interactivity do we want to add for the user?
+3. How can we **adapt the visualization** to support these interactive operations?
+
+**But remember: interactions can be distracting**
+
+## Where should computation happen?
+
++ In R?
++ In Javascript?
++ A mix?
+
+## Interactive Data Visualizations with htmlwidgets
+Make an output of a javascript program using R code (like an R translator?)
+[https://htmlwidgets.org](htmlwidgets.org)
+
+## Interactive Graphics
+
++ `DT`
++ `plot.ly`
++ `highcharter`
+
+Maps: `leaflet`, `tmap`
+
+Networks: `visnetwork`, `networkD3`
+
+On-Demand Computation: `Shiny` + ggplot2
+
+Custom graphics in the browser: `D3.js` and other supporting javascript libraries.
+
+## plot.ly
+```{r}
+library(ggplot2)
+library(plotly)
+# ggplotly(plot1)
+```
+
+
+
+```{r}
+library(gapminder)
+plot2 <- ggplot(gapminder, 
+        aes(x = gdpPercap, y = lifeExp, 
+            color = continent)) +        
+        geom_point(alpha=0.5, size=2) + 
+        geom_smooth(color="black", lwd=1, se=FALSE) + 
+        scale_x_log10("GDP per Capita") + 
+        ylab("Life Expectancy in Years") + 
+        # # theme_economist() + 
+        # theme(legend.position="none") + 
+        theme(legend.title = element_blank()) + #<<
+        ggtitle("The relationship between wealth and longevity")
+ggplotly(plot2)
+```
+
+
+# Adding legend to allow **Exploring**
+
+```{r echo=FALSE, fig.width=10, fig.height=6, message=FALSE, warning=FALSE}
+plot2 <- ggplot(gapminder, 
+        aes(x = gdpPercap, y = lifeExp, 
+            color = continent)) +        
+        geom_point(alpha=0.5, size=2) + 
+        geom_smooth(color="black", lwd=1, se=FALSE) + 
+        scale_x_log10("GDP per Capita") + 
+        ylab("Life Expectancy in Years") + 
+        # # theme_economist() + 
+        # theme(legend.position="none") + 
+        theme(legend.title = element_blank()) + 
+        ggtitle("The relationship between wealth and longevity")
+ggplotly(plot2)
+```
+
+
+
+# Changing the info box
+
+```{r, eval=FALSE, message=FALSE, warning=FALSE}
+plot3 <- ggplot(gapminder, 
+        aes(x = gdpPercap, y = lifeExp, 
+            color = continent, label = country)) +  # Label added #<<
+        geom_point(alpha=0.5, size=2) + 
+        geom_smooth(color="black", lwd=1, se=FALSE) + 
+        scale_x_log10("GDP per Capita") + 
+        ylab("Life Expectancy in Years") + 
+        # theme_economist() + 
+        theme(legend.title = element_blank()) +
+        ggtitle("The relationship between wealth and longevity")
+ggplotly(plot3)
+```
+
+
+
+# Changing the info box
+
+```{r echo=FALSE, fig.width=10, fig.height=6, message=FALSE, warning=FALSE}
+plot3 <- ggplot(gapminder, 
+        aes(x = gdpPercap, y = lifeExp, 
+            color = continent, label=country)) +  # Label added
+        geom_point(alpha=0.5, size=2) + 
+        geom_smooth(color="black", lwd=1, se=FALSE) + 
+        scale_x_log10("GDP per Capita") + 
+        ylab("Life Expectancy in Years") + 
+        # theme_economist() + 
+        theme(legend.title = element_blank()) +
+        ggtitle("The relationship between wealth and longevity")
+ggplotly(plot3, 
+         tooltip = c("country","gdpPercap", "lifeExp"))
+```
+
+
+
+# Facets
+
+```{r echo=TRUE, eval=TRUE, fig.width=10, fig.height=6, message=FALSE, warning=FALSE}
+plot4 <- ggplot(gapminder, 
+         aes(x = year, y = lifeExp, 
+             color = continent,
+             text = paste("country:",country))) + 
+     geom_point() + theme(legend.position="none") +
+     facet_wrap(~ continent) + 
+     ggtitle("Life Expectancy Across Continents")
+```
+
+
+
+# Facets
+
+```{r echo=FALSE, eval=TRUE, fig.width=10, fig.height=6, message=FALSE, warning=FALSE}
+plot5 <- plot4 +
+         theme(
+      axis.text=element_text(size=6),
+      axis.title=element_text(size=6, 
+         margin = margin(t = 20, b = 5)), 
+      strip.text.x = element_text(size = 6,
+        colour = "dark blue")) +
+      ylab("Life Expectancy") + 
+        xlab("")
+  
+ggplotly(plot5)
+```
+
+
+
+# Example: Organs Data
+
+```{r, error = TRUE}
+organs <- read.csv("data/organ_donors.csv")
+organs$year <- as.Date(strptime(organs$year, format="%Y"))
+# Average by group
+by.country <- organs %>% group_by(consent.law, country) %>%
+    summarize(donors=mean(donors, na.rm = TRUE))
+by.country
+```
+
+
+
+# Boxplot (with Jitter)
+
+```{r, eval=TRUE, message=FALSE, warning=FALSE, error=TRUE}
+plot6 <- ggplot(data=organs,
+    aes(x=reorder(country, donors, na.rm=TRUE),
+        y=donors)) + 
+  geom_boxplot(aes(fill=consent.law), 
+               outlier.colour="transparent", 
+               alpha=0.3) +
+  coord_flip() + 
+  labs(x="", y="Donor Procurement Rate") +
+  geom_jitter(shape=21, 
+              aes(fill=consent.law), 
+              color="black",
+              position = position_jitter(w = 0.1)) 
+```
+
+
+
+# Boxplot (with Jitter) - static
+
+```{r echo=FALSE, eval=TRUE, fig.width=10, fig.height=6, message=FALSE, warning=FALSE, error=TRUE}
+plot6 
+```
+
+
+
+# Boxplot (with Jitter) - interactive
+
+```{r echo=FALSE, eval=TRUE, fig.width=10, fig.height=6, message=FALSE, warning=FALSE, error=TRUE}
+ggplotly(plot6)
+```
+
+
+
+# Changing the info box
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE, error=TRUE}
+ggplotly(plot6, 
+         tooltip = c("consent.law", 
+                     "donors"))
+```
+
+## Graphing directly in plotly - "Hello World"
+
+```{r}
+library(plotly)
+plot_ly(x = rnorm(1000), y = rnorm(1000), mode = 'markers')
+?plot_ly
+```
+
+# ggplot2 -> Plotly 
+
+The **`ggplotly()` function translates most things that you can do in `ggplot2`**, but not quite everything. 
+
+To help demonstrate the coverage, there is a [plotly version of the ggplot2 docs](http://ropensci.github.io/plotly/ggplot2/).
+
+`ggplotly` works by serializing ggplot2 figures into plotly's universal graph JSON.
+
+We can **interact with the intermediate built** - i.e. after `ggplot2` but before `ggplotly` to adjust graph details as well
+
+
+
+
+# Adjusting ggplotly graphs
+
+```{r}
+p <- plotly_build(plot3)
+str(p, max.level = 1)
+```
+
+This is often **somewhat cumbersome** because of the translation from ggplot2 to plotly. But we can **build plotly objects natively right away**.
+
+
+
+# Graphing directly in `plotly` - "Hello World"
+
+```{r, message=FALSE, warning=FALSE}
+library(plotly)
+plot_ly(x = rnorm(1000), y = rnorm(1000), mode = 'markers' )
+```
+
+
+
+# Data as a plotly object 
+
+```{r echo=TRUE, eval=TRUE, fig.width=8, fig.height=5, message=FALSE, warning=FALSE}
+allCities <- txhousing %>%
+  group_by(city) %>%
+  plot_ly(x = ~date, y = ~median) %>%
+  add_lines(alpha = 0.2, 
+            name = "Texan Cities", hoverinfo = "none")
+allCities
+```
+
+
+
+# Chain operators to change the plot object
+ 
+```{r echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE}
+allCities %>%
+  filter(city == "Houston") %>%
+  add_lines(name = "Houston") 
+```
+
+```{r echo=FALSE, eval=TRUE, fig.width=10, fig.height=6, message=FALSE, warning=FALSE}
+allCities <- txhousing %>%
+  group_by(city) %>%
+  plot_ly(x = ~date, y = ~median) %>%
+  add_lines(alpha = 0.2, 
+            name = "Texan Cities", hoverinfo = "none")
+allCities %>%
+  filter(city == "Houston") %>%
+  add_lines(name = "Houston") 
+```
+
+ 
+
+# Bar Chart
+
+```{r echo=TRUE, eval=FALSE, fig.width=10, fig.height=6, message=FALSE, warning=FALSE}
+data(diamonds)
+plot_ly(diamonds, x = ~cut, color = ~clarity) %>%
+  add_histogram()
+```
+
+
+
+# Plotly cheat sheet for R
+
+- Plot.ly provides a cheat sheet on how to get started with [plotting in R](https://images.plot.ly/plotly-documentation/images/r_cheat_sheet.pdf)
+- Setup is similar to `ggplot2` but not the same.
+- Need to weigh the limitations from the ggplot to plotly conversion vs. the need to learn to how to make graphs in plotly
+
+```{r, echo=FALSE, out.width = "70%"}
+knitr::include_graphics("images/r_cheat_sheet.png")
+``` 
+
+
+
+# Boxplot in `plotly`
+
+```{r, message=FALSE, warning=FALSE}
+p <- plot_ly(organs, y = ~country, x = ~donors, type = "box")
+p
+```
+
+Sometimes labels and margins are poorly allocated. Need to fix.
+
+
+
+# Boxplot in `plotly`
+
+```{r, eval= TRUE, message=FALSE, warning=FALSE}
+# Setting margins
+m <- list(l = 150, r = 100, b = 100, t = 10, pad = 10) #<<
+plot7 <- plot_ly(organs, y = ~country, x = ~donors, 
+             color= ~consent.law,
+             type = "box") %>%
+  layout(autosize = F, width = 600, height = 400, 
+         margin = m, #<<
+         yaxis = list(title = "", showticklabels = TRUE), 
+         xaxis = list(title = "Organ Donors"))
+```
+
+
+
+# Boxplot in `plotly`
+
+```{r, eval= TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+plot7
+```
+
+
+
+
+# Other plot types: Bubble Charts
+
+```{r}
+gapminder$logpop <- log(gapminder$pop)
+plot_ly(gapminder, y = ~lifeExp, x = ~gdpPercap, 
+             color= ~continent, size=~logpop,
+             type = "scatter", mode='markers')
+```
+
+???
+
+REMOVED FOR NOW - already line plot above
+
+# Other plot types: Line Plot
+
+```{r, message=FALSE, warning=FALSE}
+plot_ly(organs, y = ~donors, x = ~year, 
+             color= ~country, 
+             type = "scatter", mode='lines')
+```
+
+
+
+
+# Other plot types: Heat Map
+
+Volcano Data: Mount Eden is a volcano in the Auckland volcanic field. The **volcano dataset** gives topographic information for Mount Eden on a **10m by 10m grid**. 
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+data(volcano)
+# The heatmap
+plot_ly(z = ~volcano, type = "heatmap")
+```
+
+
+
+# 3d surface map: Volcano Data
+
+```{r echo=TRUE, eval=TRUE, fig.width=10, fig.height=6, message=FALSE, warning=FALSE}
+# The 3D Surface Map
+plot_ly(z = ~volcano, type = "surface")
+```
+
+# General Figure Setup in Plotly
+
+```{r, eval=FALSE, message=FALSE, warning=FALSE}
+plot_ly ( )
+  data = data.frame
+  add_trace = list()
+  x,y,z, = c()
+  color, text, size = c() 
+  colorscale ‘string’ or c()
+  marker = list() 
+    color = ‘string’ 
+    symbol = list()
+  line = list() 
+    color ‘string’ 
+    width 123
+    
+layout()
+  title ‘string’
+  xaxis, yaxis = list() 
+  geo list()
+legend = list() 
+annotations = list()
+```
+
+# Online Plot Privacy
+
+- Plots can be set to three different type of privacies: 
+    - public (probably do this for final proj)
+    - private
+    - secret
+- **By default all plots are set to public**. Users with the **free account have the permission to keep one private plot**.
+
+# Data Table
+# DataTable package `DT`
+
+The R package `DT` provides an R interface to the JavaScript library `DataTables.js`. 
+
+R **data objects** (matrices or data frames) can be **displayed as tables on HTML pages**. 
+
+DataTables provides **filtering, pagination, sorting, and many other features** in the tables.
+
+```{r, echo=FALSE, out.width = "70%"}
+knitr::include_graphics("images/DT_example.png")
+```
+
+
+
+# Datatable `DT`
+
+```{r include=FALSE}
+options(DT.options = list(pageLength = 5))
+```
+
+
+# `highcharter` package
+
+```{r, echo=FALSE}
+library(tidyverse)
+library(rwars)
+swmovies <- get_all_films()
+swdata <- map_df(swmovies$results, function(x){
+  data_frame(
+    movie = x$title,
+    species = length(x$species),
+    planets = length(x$planets),
+    characters = length(x$characters),
+    vehicles = length(x$vehicles),
+    release = x$release_date
+  )
+}) 
+swdata <- gather(swdata, key, number, -movie, -release) %>% 
+  arrange(release)
+hchart(swdata, "line", hcaes(x = movie, y = number, group = key),
+       color = c("#e5b13a", "#4bd5ee", "#4AA942", "#FAFAFA")) %>% 
+  hc_title(
+    text = "Diversity in <span style=\"color:#e5b13a\"> STAR WARS</span> movies",
+    useHTML = TRUE) %>% 
+  hc_tooltip(table = TRUE, sort = TRUE) %>% 
+  hc_credits(
+    enabled = TRUE,
+    text = "Source: SWAPI via rwars package",
+    href = "https://swapi.co/") %>% 
+  hc_add_theme(
+    hc_theme_flatdark(
+      chart = list(
+        backgroundColor = "transparent",
+        divBackgroundImage = "http://www.wired.com/images_blogs/underwire/2013/02/xwing-bg.gif"
+      )
+    )
+  )
+```
+
+
+
+# The `highcharter` package
+
+
+
+```{r, echo=TRUE, eval=FALSE}
+data(mpg, package = "ggplot2")
+hchart(mpg, "scatter", 
+       hcaes(x = displ, 
+             y = hwy, 
+             group = class))
+```
+
+
+
+```{r, echo=FALSE, eval=TRUE}
+data(mpg, package = "ggplot2")
+hchart(mpg, "scatter", 
+       hcaes(x = displ, y = hwy, group = class))
+```
+
+
+# Bubble charts compared
+
+
+## ggplot2
+
+```{r, eval=FALSE}
+plot_ly(gapminder, 
+        
+        x = ~gdpPercap, 
+        y = ~lifeExp, 
+        size=~pop,
+        color= ~continent, 
+        type = "scatter", 
+        mode='markers') %>%
+layout(xaxis = list(type="log"))
+```
+
+
+## highcharter
+
+```{r, eval=FALSE}
+hchart(gapminder,
+       type = "bubble",
+  hcaes(x = gdpPercap,
+        y = lifeExp,
+        size = pop,
+        group = continent)) %>%
+  
+  
+  hc_xAxis(type = "logarithmic")
+```
+
+
+# plotly vs. highcharter
+
+
+## plotly
+
+```{r, echo=FALSE}
+plot_ly(gapminder, 
+        y = ~lifeExp, 
+        x = ~gdpPercap, 
+        color= ~continent, 
+        size=~pop,
+        type = "scatter", 
+        mode='markers') %>%
+layout(xaxis = 
+         list(type = "log"))
+```
+
+
+
+## highcharter
+
+```{r, echo=FALSE}
+hchart(gapminder,
+       type = "bubble",
+  hcaes(x = gdpPercap,
+        y = lifeExp,
+        size = pop,
+        group = continent)
+      ) %>%
+  hc_xAxis(type = "logarithmic")
+```
+
+
+
